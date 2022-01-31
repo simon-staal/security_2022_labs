@@ -48,6 +48,58 @@ We now want to run a **UDP scan**. Since we are on the same subnet as `listener`
 - `--top-ports <n>` scans the n most common ports
 - `-sV` proves open ports to determine service / version info
 - `--version-intensity <level>` sets the probe intensity between 0 (light) and 9 (all probes)
+- `-T<0-5>` sets a timing template, where higher is faster
 - `--max-retries <tries>` caps the number of port scan probe retransmissions (since we don't care about packet loss this can be set to 0)?
 
-Initial run was done using `nmap -sU -r -sV --version-all --max-retries 0`, took wayy too long.
+Initial run was done using `nmap -sU -r -sV --version-all --max-retries 0`, took wayy too long. Found some extra information on optimizing UDP scans [*here*](https://nmap.org/book/scan-methods-udp-scan.html), tried running another pass using their suggested settings: `nmap -sUV -T4 --version-intensity 0`. This revealed the following:
+```
+Nmap scan report for 10.6.66.67
+Host is up (0.00045s latency).
+Not shown: 58 open|filtered udp ports (no-response), 40 closed udp ports (port-unreach)
+PORT    STATE SERVICE VERSION
+53/udp  open  domain  dnsmasq 2.72
+111/udp open  rpcbind
+MAC Address: 08:00:27:9F:16:45 (Oracle VirtualBox virtual NIC)
+```
+Here we see that 2 ports were reached using udp, which were also accessible via TCP as observed before, although we only scanned 100 ports. I tried one last command to scan the top 1000 ports: `sudo nmap -sUV -T4 --top-ports 1000 --version-intensity 0 -v 10.6.66.67`
+
+Analysing some of the traffic using wireshark for `udp.port == 111` showed the following packets:
+1. proc-0 Call - Sent by `kali_vm` to `listener`, this was a Portmap protocol packet, which is a protocol that maps the number or version of an Open Network Computing Remote Procedure Call (ONC RPC) program to a port used for networking by that version of the program.
+2. Continuation - Sent by `kali_vm` to `listener`, using RPC (Remote Procedure Call) protocol, a message-passing protocol. Not really sure what this does.
+3. proc-0 Reply - Sent in response by `listener` indicating a valid service is on this port.
+
+For `udp.port == 53`, we see some more interesting exchanges (all using DNS protocol):
+- `kali_vm` sends a server status request to `listener`, which is refused in a response from `listener`
+- `kali_vm` sends different Standard query packets to `listener` for version.bind, which get responses from `listener`. Presumably this allows it to determine the version of the service running on port 53.
+
+We are now asked to run a full **TCP and UDP** scan on ALL of `listener`'s ports. We can use the following command: `nmap -sU -sS -p0-65535 -T5 -v`, to try and scan all ports as fast as possible since it'll probably take a while...
+The `-v` flag makes output verbose, and this allowed me to see that the TCP SYN scan finished in slightly under 4 seconds, and identified an open port on port 13337/tcp that was previously missed. The UDP scan will take about 2.5 hours -_- I tried re-running the UDP scan with a `--max-rtt-timeout` of 5ms in an effort to speed things up. Based on the wireshark packets inspected earlier, the largest latency seen was slightly under 2ms, with most responses being in less than 1ms. This greatly reduced the estimate scan time to 20 minutes (and growing) -- update, now it's at 1 hour
+
+The service offered by port 13337 is unknown, so we need to do a bit more probing to try and identify the service being used. To do this the following command was run: `nmap -sSV --version-all -p13337 10.6.66.67`
+
+This led to the identification of what the port was being used for:
+```
+PORT      STATE SERVICE VERSION
+13337/tcp open  http    Apache httpd 2.4.10 ((Debian))
+```
+We can conclude that this port is being used to run a web server.
+
+We now want to try to use nmap to scan an the dirtylan subnet. To do this, we first want to check our subnet mask, as follows:
+```
+$ ifconfig | grep netmask
+  inet 10.6.66.64  netmask 255.255.255.0  broadcast 10.6.66.255
+  inet 127.0.0.1  netmask 255.0.0.0
+```
+We have now identified our network as 10.6.66.1/24, so we can scan our local network using `nmap -sP 10.6.66.1/24`, which identified the following:
+```
+Nmap scan report for 10.6.66.1
+Host is up (0.00031s latency).
+MAC Address: 08:00:27:A2:E4:C2 (Oracle VirtualBox virtual NIC)
+Nmap scan report for 10.6.66.67
+Host is up (0.00031s latency).
+MAC Address: 08:00:27:9F:16:45 (Oracle VirtualBox virtual NIC)
+Nmap scan report for 10.6.66.64
+Host is up.
+Nmap done: 256 IP addresses (3 hosts up) scanned in 1.92 seconds
+```
+As expected, we have detected 3 hosts, 10.6.66.1 (DHCP server), 10.6.66.67 (`listener`) and 10.6.66.64 (`kali_vm` or ourselves)
