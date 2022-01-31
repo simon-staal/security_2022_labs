@@ -15,7 +15,7 @@ After booting up the `listener` VM, we can see an exchange of 4 packets:
 
 Port scanning and host discovery
 --------------------------------
-Running a **TCP SYN scan** on `listener` using the IP address sniffed in the previous section, we obtain the following results:
+Running a **TCP SYN scan** on `listener` using the IP address sniffed in the previous section, using `nmap -sS 10.6.66.67`. We obtain the following results:
 ```
 Nmap scan report for 10.6.66.67
 Host is up (0.00026s latency).
@@ -40,3 +40,14 @@ We can note that for the other active ports, the exchange is the same as the one
 In contrast, if we look at `tcp.port == 23`, which `nmap` has identified as a closed port, we can see the following exchange:
 1. SYN - from `kali_vm` to `listener`, same as in the previous exchange trying to initiate a connection.
 2. RST, ACK - sent from `listener` to `kali_vm` to indicate that this port is not open for TCP connections.
+
+We now want to run a **UDP scan**. Since we are on the same subnet as `listener`, we don't care about packet loss or stealthiness, so we can make this scan more aggressive. Looking at the `nmap` manual, we can identify the following relevant options:
+- `-sU` performs a UDP scan
+- `-F` enables "fast mode", scanning rewer ports than the default scanned
+- `-r` scans ports consecutively, without randomizing
+- `--top-ports <n>` scans the n most common ports
+- `-sV` proves open ports to determine service / version info
+- `--version-intensity <level>` sets the probe intensity between 0 (light) and 9 (all probes)
+- `--max-retries <tries>` caps the number of port scan probe retransmissions (since we don't care about packet loss this can be set to 0)?
+
+Initial run was done using `nmap -sU -r -sV --version-all --max-retries 0`, took wayy too long.
