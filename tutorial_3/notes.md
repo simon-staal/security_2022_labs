@@ -165,3 +165,22 @@ SF:\0\0Cookie:\x20mstshash=nmap\r!\n");
 ```
 nmap said they were unable to recognize the service, not sure if this is why everything was weird.
 4. We're flooding the network with a lot of traffic, in a very 'in-organic' way. For example, accessing all the ports on a given host is quite strange. Presumably a network administrator could have tools that look out for this sort of behaviour.
+
+Communicating with a server using netcat
+----------------------------------------
+I initiated a connection with the web server on port 13337 of 10.6.66.67 (**listener**) using `nc 10.6.66.67 13337`. The web server was now waiting for a request from us, I fetched the page at /test using HTTP/1.0 by sending `GET /test HTTP/1.0`. The response was stored in [**test.html**](test.html), we can see that we connected successfully.
+
+We now want to access a page at the path /browsercheck, pretending to use version 331 of the 'Awesome Imperial College London Browser'. I initially tried to spoof the version by specifying the `User-Agent` field of the HTTP request as follows:
+```
+GET /browsercheck HTTP/1.0
+User-Agent: Awesome Imperial College London Browser/331
+```
+I initially had a typo in my request (specified version 313), but after solving this, I got the binary response I was looking for. Looking at the response header, I noted the content type:
+```
+HTTP/1.1 200 OK
+Date: Sat, 05 Feb 2022 18:09:25 GMT
+Server: Apache/2.4.10 (Debian)
+Connection: close
+Content-Type: image/jpeg
+```
+I resaved the data as a .jpeg
