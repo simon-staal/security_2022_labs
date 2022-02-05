@@ -183,4 +183,4 @@ Server: Apache/2.4.10 (Debian)
 Connection: close
 Content-Type: image/jpeg
 ```
-I resaved the data as a .jpeg, but that didn't help
+I resaved the data as a .jpeg, but that didn't help. After looking at the raw binary data, I noticed `EF BF BD` at the start of my file, which is the REPLACEMENT CHARACTER � encoded in UTF-8. By opening the file in atom (or some other text editor), the parsing replaced the illegal bytes, removing the data. After trying again, this time saving in [**data**](data), and looking at the bytes, after the header, I noticed the sequence `FF D8 FF`, which is the header of a jpeg! The challenge is now removing the bytes at the front which belong to the HTTP response header, without reformatting the other bytes.
