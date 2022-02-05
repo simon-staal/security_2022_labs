@@ -183,4 +183,4 @@ Server: Apache/2.4.10 (Debian)
 Connection: close
 Content-Type: image/jpeg
 ```
-I resaved the data as a .jpeg
+I resaved the data as a .jpeg, but that didn't help
