@@ -52,3 +52,5 @@ A more interesting exploit that can be done with this is opening a [**reverse-sh
 3. In the terminal where you ran netcat on your attacker computer you now have a bash terminal inside the victim!
 
 From here I used the [**locate**](https://linuxize.com/post/locate-command-in-linux/) command as follows: `locate -i secret`, which returns all filenames which contain 'secret' (`-i` makes it case invariant). This identified the secret file in `/home/csn/THIS_IS_THE_SECRET_FILE.txt`. I used `cat` to check the file contents and copied it onto my local machine. MISSION SUCCESS!
+
+*N.B. - I tried to use `scp` but I don't think ssh is working on `dvwa`*
