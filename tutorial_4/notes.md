@@ -54,3 +54,20 @@ A more interesting exploit that can be done with this is opening a [**reverse-sh
 From here I used the [**locate**](https://linuxize.com/post/locate-command-in-linux/) command as follows: `locate -i secret`, which returns all filenames which contain 'secret' (`-i` makes it case invariant). This identified the secret file in `/home/csn/THIS_IS_THE_SECRET_FILE.txt`. I used `cat` to check the file contents and copied it onto my local machine. MISSION SUCCESS!
 
 *N.B. - I tried to use `scp` but I don't think ssh is working on `dvwa`*
+
+**File Upload**
+*Security Level: low*
+I now want to find the hidden file again without any of the knowledge I've gathered from the command injection. Looking at the source code we see the following lines of interest:
+```
+if( !move_uploaded_file( $_FILES[ 'uploaded' ][ 'tmp_name' ], $target_path ) ) {
+        // No
+        echo '<pre>Your image was not uploaded.</pre>';
+}
+else {
+    // Yes!
+    echo "<pre>{$target_path} succesfully uploaded!</pre>";
+}
+```
+Since the page doesn't check the filetype of our upload, we can simply upload a php script and run it. I created [**find_secret.php**](find_secret.php), which looks for the secret file in the same methodology as in the previous section.
+
+After uploading the file, we are shown where it's stored, and navigating to `http://10.6.66.42/dvwa/hackable/uploads/find_secret.php`, we can see the results of the script.
