@@ -71,3 +71,55 @@ else {
 Since the page doesn't check the filetype of our upload, we can simply upload a php script and run it. I created [**find_secret.php**](find_secret.php), which looks for the secret file in the same methodology as in the previous section.
 
 After uploading the file, we are shown where it's stored, and navigating to `http://10.6.66.42/dvwa/hackable/uploads/find_secret.php`, we can see the results of the script.
+
+**Command Injection**
+*Security Level: medium*
+On this level, the source code has added a blacklist:
+```
+// Set blacklist
+$substitutions = array(
+    '&&' => '',
+    ';'  => '',
+);
+```
+A string replacement is performed on the user input:
+`$target = str_replace( array_keys( $substitutions ), $substitutions, $target ); `
+
+Looking at the blacklist, we can still execute arbitrary commands using `&`, as this isn't on the blacklist, or more creatively using `&;&`, as the `;` is deleted.
+
+*Security Level: high*
+On this level, the blacklist has been expanded:
+```
+// Set blacklist
+$substitutions = array(
+    '&'  => '',
+    ';'  => '',
+    '| ' => '',
+    '-'  => '',
+    '$'  => '',
+    '('  => '',
+    ')'  => '',
+    '`'  => '',
+    '||' => '',
+);
+```
+The first thing I noticed was that the blacklist banning the pipe `|` operator also included a space in the match case. This meant that if there isn't a space in the command the character won't be removed. Note that the `-` being removed makes it much harder to set up a reverse shell using the command we used before. However, we can still get some limited functionality. Some more advanced exploitation can be found [**here**](https://www.lastbreach.com/blog/dvwa-unintended-command-injection-high).
+
+**File Upload**
+*Security Level: medium*
+In this version of file upload, the type of the file is checked as follows:
+```
+// Is it an image?
+    if( ( $uploaded_type == "image/jpeg" || $uploaded_type == "image/png" ) &&
+        ( $uploaded_size < 100000 ) )
+```
+Where `$uploaded_type = $_FILES[ 'uploaded' ][ 'type' ]; `. An important thing to note is that the `$_FILES[ 'uploaded' ][ 'type' ]` information is encoded as part of the HTTP message, and not the file extension. Using the firefox developer tools, we can switch to the network tab. We can first try uploading the [**reverse_shell.php**](reverse_shell.php) file, which would allow us to open a reverse shell on the web server. We can see that this request is denied, as the content type is not an image. However, if we select this packet, we can select the 'edit and resend' option and manually change the Content-Type from `application/x-php` to `image/jpeg`. Note that the field to change is actually in the request body, with the request header having the Content-Type `multipart/form-data`, which is used to include the file in the data as part of the POST request.
+
+**Questions**
+1. The command injection vulnerabilities in DVWA could be fixed quite easily by using the `escapeshellarg()` PHP command around the user input that is used inside the `shell_exec()` function. This function ensures every meta-character in a string will be escaped and the string will be added a quote around it, so that it is safely read as a single safe argument (essentially sanitizing our input). Another good thing to do (as shown in the *impossible* difficulty), is to validate the input to be a specific IP address, and rejecting any inputs that don't match that.
+2. For file upload, the extension of the file being uploaded can be checked from the filename as follows:
+```
+$uploaded_name = $_FILES[ 'uploaded' ][ 'name' ];
+$uploaded_ext  = substr( $uploaded_name, strrpos( $uploaded_name, '.' ) + 1);
+```
+The file extension itself could be checked against valid image options, which would prevent .php scripts from being uploaded. The problem is that this still allows PHP scripts to be included as part of the image meta-data. We must therefore also strip any metadata by re-encoding the image. Finally, session tokens can be generated and checked by the server to prevent CSRF (Cross-Site Request Forgery) attacks, which ensures the HTTP request is legitimately generated via the application's user interface.
