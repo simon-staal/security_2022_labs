@@ -40,7 +40,7 @@ After connecting to the `dvwa` webpage, we are told to use the *Command Injectio
 **Command Injection**
 *Security Level: low*
 Looking at the source code, we can see the following lines of interest:
-```
+```PHP
 $target = $_REQUEST[ 'ip' ]; // Extracts input we provide to the prompt in the webapp
 $cmd = shell_exec( 'ping  -c 4 ' . $target ); // Directly inserts the input into a shell command
 ```
@@ -58,7 +58,7 @@ From here I used the [**locate**](https://linuxize.com/post/locate-command-in-li
 **File Upload**
 *Security Level: low*
 I now want to find the hidden file again without any of the knowledge I've gathered from the command injection. Looking at the source code we see the following lines of interest:
-```
+```PHP
 if( !move_uploaded_file( $_FILES[ 'uploaded' ][ 'tmp_name' ], $target_path ) ) {
         // No
         echo '<pre>Your image was not uploaded.</pre>';
@@ -75,7 +75,7 @@ After uploading the file, we are shown where it's stored, and navigating to `htt
 **Command Injection**
 *Security Level: medium*
 On this level, the source code has added a blacklist:
-```
+```PHP
 // Set blacklist
 $substitutions = array(
     '&&' => '',
@@ -89,7 +89,7 @@ Looking at the blacklist, we can still execute arbitrary commands using `&`, as 
 
 *Security Level: high*
 On this level, the blacklist has been expanded:
-```
+```PHP
 // Set blacklist
 $substitutions = array(
     '&'  => '',
@@ -108,7 +108,7 @@ The first thing I noticed was that the blacklist banning the pipe `|` operator a
 **File Upload**
 *Security Level: medium*
 In this version of file upload, the type of the file is checked as follows:
-```
+```PHP
 // Is it an image?
     if( ( $uploaded_type == "image/jpeg" || $uploaded_type == "image/png" ) &&
         ( $uploaded_size < 100000 ) )
@@ -118,7 +118,7 @@ Where `$uploaded_type = $_FILES[ 'uploaded' ][ 'type' ]; `. An important thing t
 **Questions**
 1. The command injection vulnerabilities in DVWA could be fixed quite easily by using the `escapeshellarg()` PHP command around the user input that is used inside the `shell_exec()` function. This function ensures every meta-character in a string will be escaped and the string will be added a quote around it, so that it is safely read as a single safe argument (essentially sanitizing our input). Another good thing to do (as shown in the *impossible* difficulty), is to validate the input to be a specific IP address, and rejecting any inputs that don't match that.
 2. For file upload, the extension of the file being uploaded can be checked from the filename as follows:
-```
+```PHP
 $uploaded_name = $_FILES[ 'uploaded' ][ 'name' ];
 $uploaded_ext  = substr( $uploaded_name, strrpos( $uploaded_name, '.' ) + 1);
 ```
