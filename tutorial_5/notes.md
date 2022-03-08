@@ -121,7 +121,7 @@ Now that we have the hash, we want to recover the password using our good friend
 $ john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt --rules hash.txt
 abc123           (gordonb)
 ```
-The password for gordonb is therefore abc123, which works when trying to login!
+The password for gordonb is therefore abc123, which works when trying to login! To see the password again after cracking it, you can run `john --show --format=Raw-MD5 hash.txt`.
 
 <a name="automated"></a> Automating aa blind SQL injection against DVWA
 -------------
