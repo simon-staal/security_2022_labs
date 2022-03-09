@@ -17,7 +17,7 @@ $query  = "SELECT first_name, last_name FROM users WHERE user_id = '$id';";
 This means that our input into the text field is directly inserted into our SQL command. The only thing we need to worry about are the `''` surrounding `$id`. We can do so with the following query: `a' OR 1; -- `. The `a'` finishes the `user_id = '` part of the query, the `OR 1` ensures we print every row, and finally the `; -- ` finishes our query and comments out the `';` part of the query in the source code. Note that the `--` **must** be followed by a whitespace or it [won't comment](https://dev.mysql.com/doc/refman/8.0/en/comments.html) (one of the quirks of mysql). The `;` isn't actually nneeded for the query to run, but I'd assume it's good practice to include it.
 
 It's also important to note that the web-page only displays the "first_name" and "last_name" columns:
-```
+```PHP
 while( $row = mysqli_fetch_assoc( $result ) ) {
         // Get values
         $first = $row["first_name"];
@@ -138,7 +138,7 @@ The source code here is very similar to the medium level for the non-blind SQL i
 The code here is also the same as it was for the non-blind SQL injection. We can enter our payload directly into the session window as our input is once again passed in unsanitized. This means we can use any of the approaches outlined above to obtain TRUE/FALSE responses on the contents of the database.
 
 
-<a name="automated"></a>Automating aa blind SQL injection against DVWA
+<a name="automated"></a>Automating blind SQL injection against DVWA
 -------------
 As mentioned above, asking TRUE/FALSE questions to determine the contents of the password hash would be a very slow and time consuming process. Employing a programatic approach solves this issue. To do this, I wrote a python script (with some serious help from [Bad_Jubies](https://bad-jubies.github.io/Blind-SQLi-1/)). To send HTTP requests in python, we can use the `requests` library. The first issue is that in order to send requests to DVWA, we need to authenticate ourselves first.
 
