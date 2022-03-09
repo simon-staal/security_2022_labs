@@ -24,6 +24,7 @@ while( $row = mysqli_fetch_assoc( $result ) ) {
         $last  = $row["last_name"];
         // Feedback for end user
         echo "<pre>ID: {$id}<br />First name: {$first}<br />Surname: {$last}</pre>";
+}
 ```
 Therefore, when executing arbitrary SQL queries, we will need to use `AS` clauses to rename the columns we are looking up. Additionally, if we are looking up multiple columns we can use `CONCAT(col1, " ", col_2, etc...) AS first_name`.
 
