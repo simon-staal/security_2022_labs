@@ -138,6 +138,23 @@ The source code here is very similar to the medium level for the non-blind SQL i
 
 The code here is also the same as it was for the non-blind SQL injection. We can enter our payload directly into the session window as our input is once again passed in unsanitized. This means we can use any of the approaches outlined above to obtain TRUE/FALSE responses on the contents of the database.
 
+## Questions
+
+1. For both categories, the vulnerable line is as follows:
+  - *Low* - Line 8 `$query  = "SELECT first_name, last_name FROM users WHERE user_id = '$id';";`
+  - *Medium* - Line 9 `$query  = "SELECT first_name, last_name FROM users WHERE user_id = $id;";`
+  - *High* - Line 8 `$query  = "SELECT first_name, last_name FROM users WHERE user_id = '$id' LIMIT 1;"; `
+  They allow untruseted user input (from `$_GET['id']`) to contaminate a SQL query that is then sent to the database erver for execution using PHP's `my sqli_query()` function.
+
+2. In both categories, line 5 of the PHP code for the low security level reads the user ID to be queried from the query string in the URL (`$_GET['id']`). In higher levels, the input is read from different locations that make the SQL injection attack harder: in the medium security levels it is read from the value of the selected option in a `<select>` box in a HTML form (`$_POST['id']`), but the attacker can submit a non-approved value for the id parameter by intercepting and modifying the outgoing HTTP request. The high security levels allow the user to change their user ID — in the SQL Injection category by updating the server-side session data store (`$_SESSION['id']`) and in the SQL Injection (Blind) category by modifying their cookie (`$_COOKIE['id']`) — but the supplied value is never validated before being concatenated with the SQL query that is eventually executed by the database server. Additionally, the PHP code for the high security level in the SQL Injection (Blind) category attempts to frustrate timing attacks by sleeping at random (for at most 4 seconds) when the database query returns an empty table (i.e., when the answer to the “yes/no” question is “no”). This is inadequate because the attack can simply cause the database server to sleep for more than 4 seconds, so that the “no” outcome can still be identified by the attacker.
+
+3. Use parameterised statements to build the SQL query that will be executed, rather than concatenating variables containing untrusted user-supplied input with string literals.
+  ```PHP
+  $data = $db->prepare( 'SELECT first_name, last_name FROM users WHERE user_id = (:id) LIMIT 1;' );
+  $data->bindParam( ':id', $id, PDO::PARAM_INT );
+  $data->execute();
+  $row = $data->fetch();
+  ```
 
 <a name="automated"></a>Automating blind SQL injection against DVWA
 -------------

