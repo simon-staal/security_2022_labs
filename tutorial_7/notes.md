@@ -1,11 +1,12 @@
 # Tutorial 7: Client-Side Web Vulnerabilities (Part 1)
 
 ## Cross-site scripting vulnerabilities in DVWA
-Our goal is to exploit the vulnerbilities in the **XSS (Reflected and Stored)** categories on `dvwa`. I will first go through the **Reflected** category, then the **Stored**. To test this vulneratility, a "fake" web server was instantiated on port 8000 using the following command:
+Our goal is to exploit the vulnerbilities in the **XSS (Reflected and Stored)** categories on `dvwa` to leak the user's session cookie. I will first go through the **Reflected** category, then the **Stored**. To test this vulneratility, a "fake" web server was instantiated on port 8000 using the following command:
 ```
 ncat -lkc "perl -e 'while (defined(\$x = <>)){ print STDERR \$x; last if \$x eq qq#\\r\\n
 # } print qq#HTTP/1.1 204 No Content\\r\\n#'" 8000
 ```
+Our goal will be to then send the user's session cookie (`PHPSESSID`) to this server.
 
 ### XSS (Reflected)
 
