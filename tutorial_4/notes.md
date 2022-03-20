@@ -1,8 +1,6 @@
-Tutorial 4: Server-Side Web Vulnerabilities
-===========================================
+# Tutorial 4: Server-Side Web Vulnerabilities
 
-Gathering information on `dvwa`
--------------------------------
+## Gathering information on `dvwa`
 We are exploiting a web application hosted on `dvwa`. As such, we want to gather the following information:
 1. `dvwa`'s IP address
 2. The operating system it's running
@@ -29,12 +27,12 @@ MAC Address: 08:00:27:05:A6:4D (Oracle VirtualBox virtual NIC)
 This not only identified the web server software as **Apache 2.4.10**, but also identified the PHP version as **5.6**
 
 ### **Questions**
-1. The way `nmap` determines a host's operating system is that it sends specific tcp packets and fingerprint the responses using TCP/IPS fingerprinting. The Linux 3.2 - 4.9 OS must send out the same response, and as such it can't distinguish between them.
+1. Nmap detects the remote host's OS version by fingerprinting its networking stack, which is possible because there are subtle differences in the header content and ordering of packets created by different OSes and different versions of the same OS. Nmap has a database that maps known networking stack fingerprints to OS versions. The Linux 3.2 - 4.9 OS must send out responses that are similar enough that the cannot be distinguished by simply inspecting the header content and ordering of packets they create. This fingerprinting method is also unable to distinguish between kernels provided by different Linux distributions.
 2. Another way to gain information about the operating system can be using the version provided by `nmap`'s TCP scan. We can see that Apache is running on Debian. The '+deb8u1' indicates that it's Debian 8 (also called "jessie"), see [**here**](https://unix.stackexchange.com/questions/119158/why-do-some-debian-packages-have-a-deb7u2-suffix).
-3. An administrator of `dvwa` could setup a firewall to block connections from certain IP addresses. *Check solutions when they're released*
+  We could go even further and use this information to take a guess at the version of the Linux kernel that is running on `dvwa`. There's a good chance that `dvwa` is running a Linux kernel available in the Debian 8 repositories. From the Debian Package Tracker's entry for the `php5` package (which is the version of the PHP interpreter `dvwa` is using), we can see that PHP 5.6.29 was added to the Debian repositories on December 17th 2016 and removed on February 18th 2017. Cross-referencing these dates with those in the Debian Package Tracker's entry for the `linux` package, we can see that Linux kernel versions 3.16.36 and 3.16.39 were the only ones present in the Debian 8 repositories in this date range. Assuming that the administrator of `dvwa` installed all package updates around the same time, it's likely that `dvwa` is running one of these two kernel versions (`dvwa` is actually running 3.16.39).
+3. There is no reason that the Apache web server listening on TCP port 80 needs to disclose so much version information in its banner. The easiest way to limit this leakage is to configure Apache to display the minimal amount of information possible in its banner. This can be done using the `ServerTokens` directive in the Apache configuration file.
 
-Finding vulnerabilities in `dvwa`
----------------------------------
+## Finding vulnerabilities in `dvwa`
 After connecting to the `dvwa` webpage, we are told to use the *Command Injection* or *File Upload* sections and exploit a vulnerability present in the source code to find a hidden file.
 
 ### **Command Injection**
