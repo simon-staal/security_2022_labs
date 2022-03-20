@@ -17,6 +17,7 @@ OS CPE: cpe:/o:linux:linux_kernel.:3 cpe:/o:linux:linux_kernel:4
 OS details: Linux 3.2 - 4.9
 ```
 This identifies the OS as anything between Linux 3.2 and 4.9.
+
 3. `nmap -sSV 10.6.66.42` was used to perform a scan of the popular TCP ports and identify their versions:
 ```
 PORT    STATE SERVICE VERSION
