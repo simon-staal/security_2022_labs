@@ -88,9 +88,19 @@ I first tested this by opening this link in a new tab, which caused my password 
 ```
 Another option is to redirect our user to the payload url using a `<meta>` tag in the header, but this means that the user can see that they've been redirected, which might be a little *sus*. If we now open our [evil webpage](high.html), all the relevent network requests are made, with our XXS attack triggering a CSRF attack which sets the user's password to 'high'!
 
-## Questions
+### Questions
 1. In the *easy* difficulty, there is no attempt to prevent CSRF. The attempts to prevent if in the other levels are on line 5:
   - *Medium level:* The faulty if-statement was covered in it's section. However, if it worked as intended it could still easily be bypassed (e.g. with the use of an iframe). Furthermore, the server name could appear anywhere in the referring url, and doesn't even need to be the origin to bypass the filter.
   - *High level:* The anti-CSRF token is static and per-user, allowing it to be stolen (using another exploit in DVWA) and reused in a CSRF exploit at any later time.
 
 2. These vulnerabilites could be solved with the correct implementation of an anti-CSRF token, or requiring the user to correctly supply some authenticating information (e.g. their current password) before performing the password change.
+
+## A content security policy for DVWA
+
+I didn't have the time to go through this properly. Sorry :(
+
+Basically just have a look through the different CSP headers.
+
+### Questions
+1. DVWA's HTML output contains inline scripts (e.g. `onclick` attributes), meaning that the `Content-Security-Policy` HTTP header must contain the directive `script-src 'unsafe-inline'`. Unfortunately, this also permits injected scripts (e.g. those present as a result of a successful XSS attack) to execute in the browser, thus unermining the conotent security policy's effectiveness.
+2. All inline scripts should be removed from DVWA and replaced with code in an external script that modifies the DOM (e.g. inline event listeners for elements that have them should be replaced with calls to `addEventListener()` on the target element). This external script should then be hosted on a seperate high-security trusted origin (e.g. `http://10.6.66.43`), and the CSP can mandate that the browser should only execute scripts originating from this origin (e.g. `script-src http://10.6.66.43`). Ideally, the use of `eval()` should also be eradicated from DVWA's JavasScript code after it has been refactored, so that the `script-src` directive need not contain `unsafe-eval`.
