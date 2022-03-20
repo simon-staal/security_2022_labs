@@ -5,7 +5,7 @@ SQL injection vulnerabilities in `dvwa`
 ---------------------------------------
 Our goal is to exploit the vulnerbilities in the **SQL Injection** category on `dvwa`.
 
-*Security Level: low*
+#### *Security Level: low*
 
 Looking at the source code, we notice the following lines of interest:
 ```PHP
@@ -63,7 +63,7 @@ Constructing a query that reveals the password hashes of all users is now quite 
 
 This query reveals the information we are looking for, and was stored [**here**](dvwa_user_passwd.txt). From here if we wanted to penetrate the system we could now try using an offline dictionary attack similar to the approach used in lab2. Since the password hashes don't seem to have salts, this should be relatively easy.
 
-*Security Level: medium*
+#### *Security Level: medium*
 
 There are a few changes here compared to the previous level. Database queries aree now sent using POST requests instead of being encoded in the GET request query string. The webpage first checks that the database is connected, then uses `mysqli_real_escape_string()` on the input. This function only affects a few characters, notably the `'` and `"` characters, meaning we can't give queries that try to match strings (which is pretty inconvenient). It escapes these characters by adding backslashes to them. In terms of the actual query, `$id` is no longer wrapped in quotes (presumably since we can't use them anymore so we wouldn't be able to escape).
 
@@ -71,7 +71,7 @@ The main change here is how we can actually perform our SQL injections. The UI n
 
 With the information we gathered in the previous difficulty level, using a the following POST body extracts the usernames and passwords: `id=0 UNION SELECT user AS first_name, password AS last_name FROM users&Submit=Submit`. However, if we want to perform the same information gathering as before, our task becomes more difficult as we can no longer filter for the table we are interested in. We can still try and guess table / column names, and if they don't exist we will get an error as a result, or sift through the meta-data manually.
 
-*Security Level: high*
+#### *Security Level: high*
 
 This level seems to be much easier than the previous one, and is essentially a copy of *low*. The only difference is that there is now a `LIMIT 1` at the end of our query, but this can be commented out using the same type of query used in *low*. On the UI side of things, we need to click the link to open the dialog box to change our ID, but this field is free-form so we are free to enter any commands we want. The data is now transferred by a seperate `SESSION`, rather than a GET request, but this does not stop the vulnerability.
 
@@ -81,7 +81,7 @@ Our goal is to exploit the vulnerabilities in DVWA's SQL Injection (Blind) categ
 
 In this category, we are essentially able to ask YES/NO questions to the web application, which will allow us to recover information 1 bit at a time.
 
-*Security Level: low*
+#### *Security Level: low*
 
 In this case, our input is simply passed in completely unsanitized to the database:
 ```PHP
@@ -130,11 +130,11 @@ abc123           (gordonb)
 ```
 The password for gordonb is therefore abc123, which works when trying to login! To see the password again after cracking it, you can run `john --show --format=Raw-MD5 hash.txt`.
 
-*Security Level: medium*
+#### *Security Level: medium*
 
 The source code here is very similar to the medium level for the non-blind SQL injection. Essentially, we need to change the id as within the body of the POST request using the developer tools, and we need to be careful as `'` and `"` are escaped due to `mysqli_real_escape_string`, so we can no longer use them in our query. In order to get around this, we can use the SQL function `ASCII(character)`, which returns the ASCII value of a character. This way, we can still ask TRUE/FALSE questions to gather information on the contents of the password hash by setting the value of id in the POST body to `2 AND ascii(substring(password, 1, 1)) = 101`. Repeating this for each character in password would let you build up the entire hash.
 
-*Security Level: high*
+#### *Security Level: high*
 
 The code here is also the same as it was for the non-blind SQL injection. We can enter our payload directly into the session window as our input is once again passed in unsanitized. This means we can use any of the approaches outlined above to obtain TRUE/FALSE responses on the contents of the database.
 

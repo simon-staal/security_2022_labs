@@ -9,7 +9,7 @@ After booting up the `listener` VM, we can see an exchange of 4 packets:
 3. DHCP Request, sent from 0.0.0.0 advertises that it wants to use the configuration offered.
 4. DHCP Acknowledgment, sent from 10.6.66.1 confirms the request.
 
-**Questions**
+### **Questions**
 1. An attacker using `kali-vm` can act as an eavesdropper or participant on the network. However, using ARP poisoning an attecker could become a MITM.
 2. An attacker could inpersonate the DHCP server, offering a different IP address to `listener`. For example if it gives `listener` its own IP address, whenever `listener` is meant to recieve packets from the router, the router would forward them to `kali-vm` instead. Alternatively, the attacker could give it the same IP that would be offered by the DHCP server with a higher lease time, and then take this IP address over once the lease provided by the DHCP expires for the same effect.
 
@@ -117,7 +117,7 @@ Nmap done: 256 IP addresses (3 hosts up) scanned in 1.92 seconds
 ```
 As expected, we have detected 3 hosts, 10.6.66.1 (DHCP server), 10.6.66.67 (`listener`) and 10.6.66.64 (`kali_vm` or ourselves)
 
-**Questions**
+### **Questions**
 1. Nmap could determine if a TCP port was open by checking the response of `listener`, if the response was a **SYN, ACK** the port was open, but if it was a **SYN, RST** the port was closed.
 2. Because otherwise the scan takes too long, because nmap is never sure if the response packets are lost and so it might keep trying the same ports. Since everything is on a local network this is not something we need to worry about.
 3. No clue what they're on about, maybe I didn't notice anything odd because I just focused on 1 specific port? Tried to get more details on all the open ports: `nmap -sSV --version-all -p21,22,53,111,13337 10.6.66.67`. This did reveal some strange behaviour. We were able to identify some services:

