@@ -159,7 +159,7 @@ Content-Type: image/jpeg
 ```
 I resaved the data as a .jpeg, but that didn't help. After looking at the raw binary data, I noticed `EF BF BD` at the start of my file, which is the REPLACEMENT CHARACTER � encoded in UTF-8. By opening the file in atom (or some other text editor), the parsing replaced the illegal bytes, removing the data. After trying again, this time saving in [**data**](data), and looking at the bytes, after the header, I noticed the sequence `FF D8`, which is the header of a jpeg! The challenge is now removing the bytes at the front which belong to the HTTP response header, without reformatting the other bytes.
 
-To do this I wrote a [**recover_jpeg.py**](recover_jpeg.py) script that will do this. This saved the resulting jpeg in [**data.jpeg**](data.jpeg), which contains the successfully decoded jpeg!
+To do this I wrote a python script ([**recover_jpeg.py**](recover_jpeg.py)) that will do this. This saved the resulting jpeg in [**data.jpeg**](data.jpeg), which contains the successfully decoded jpeg!
 
 ## IP Address & DNS spoofing
 Our challenge for this section is to intercept and read the secret message being sent by `listener` to `mothership.dirty.lan`. In order to do this, we will need to intercept `listener`'s DNS request and respond with our own IP address.

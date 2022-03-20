@@ -1,12 +1,9 @@
-Tutorial 5: SQL Injection Vulnerabilities
-=========================================
+# Tutorial 5: SQL Injection Vulnerabilities
 
-SQL injection vulnerabilities in `dvwa`
----------------------------------------
+## SQL injection vulnerabilities in `dvwa`
 Our goal is to exploit the vulnerbilities in the **SQL Injection** category on `dvwa`.
 
 #### *Security Level: low*
-
 Looking at the source code, we notice the following lines of interest:
 ```PHP
 // Get input
@@ -36,6 +33,7 @@ This reveals the following information:
 - `column_name`- The name of the column.
 
 This allows us to build up a structure of the `dvwa` database:
+
 **dvwa schema**
 
 *guestbook* table, containing:
@@ -58,7 +56,9 @@ This allows us to build up a structure of the `dvwa` database:
 This schema is a [meta-data schema built into MySQL](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html). This would be useful to filter out in future.
 
 Constructing a query that reveals the password hashes of all users is now quite trivial:
-`a' UNION SELECT user AS first_name, password AS last_name FROM users; -- `
+```
+a' UNION SELECT user AS first_name, password AS last_name FROM users; --
+```
 *N.B. To make a query that matches the spec exactly, we'd want to use the following query instead `a' UNION SELECT NULL, password AS last_name FROM users; -- `, but I think it's more useful to see the user and password*
 
 This query reveals the information we are looking for, and was stored [**here**](dvwa_user_passwd.txt). From here if we wanted to penetrate the system we could now try using an offline dictionary attack similar to the approach used in lab2. Since the password hashes don't seem to have salts, this should be relatively easy.
@@ -75,11 +75,8 @@ With the information we gathered in the previous difficulty level, using a the f
 
 This level seems to be much easier than the previous one, and is essentially a copy of *low*. The only difference is that there is now a `LIMIT 1` at the end of our query, but this can be commented out using the same type of query used in *low*. On the UI side of things, we need to click the link to open the dialog box to change our ID, but this field is free-form so we are free to enter any commands we want. The data is now transferred by a seperate `SESSION`, rather than a GET request, but this does not stop the vulnerability.
 
-Blind SQL injection vulnerabilities in DVWA
--------------------------------------------
-Our goal is to exploit the vulnerabilities in DVWA's SQL Injection (Blind) category to obtain the password hash of Gordon Brown (user ID 2).
-
-In this category, we are essentially able to ask YES/NO questions to the web application, which will allow us to recover information 1 bit at a time.
+## Blind SQL injection vulnerabilities in DVWA
+Our goal is to exploit the vulnerabilities in DVWA's SQL Injection (Blind) category to obtain the password hash of Gordon Brown (user ID 2). In this category, we are essentially able to ask YES/NO questions to the web application, which will allow us to recover information 1 bit at a time.
 
 #### *Security Level: low*
 
@@ -118,7 +115,7 @@ Fromm the previous exercise, we know that the target hash is `e99a18c428cb38d5f2
 - `2' AND password LIKE 'e%'; -- ` **TRUE**
 - `2' AND password LIKE 'e9%'; -- ` **TRUE**
 - `2' AND password LIKE 'e99%'; -- ` **TRUE**
-etc.
+  etc.
 - `2' AND password LIKE 'e99a18c428cb38d5f260853678922e03%'; -- ` **TRUE**
 - `2' AND password LIKE 'e99a18c428cb38d5f260853678922e03'; -- ` **TRUE**
 We have now confirmed that this is indeed the hash of Gordon Brown. Doing this without the knowledge of the hash would've taken a really long time, so this would normally be done using an automated approach (see [**here**](#automated)). For the remaining vulnerabilitiies, once I demonstrate how to get 1 bit of information I will consider the problem solved and move on.
@@ -156,8 +153,7 @@ The code here is also the same as it was for the non-blind SQL injection. We can
   $row = $data->fetch();
   ```
 
-<a name="automated"></a>Automating blind SQL injection against DVWA
--------------
+## <a name="automated"></a>Automating blind SQL injection against DVWA
 As mentioned above, asking TRUE/FALSE questions to determine the contents of the password hash would be a very slow and time consuming process. Employing a programatic approach solves this issue. To do this, I wrote a python script (with some serious help from [Bad_Jubies](https://bad-jubies.github.io/Blind-SQLi-1/)). To send HTTP requests in python, we can use the `requests` library. The first issue is that in order to send requests to DVWA, we need to authenticate ourselves first.
 
 To do this, we need to figure out how logging in works. Using the developer tools, we can check what requests are sent: once we login we send a POST request with the following body:
