@@ -3,7 +3,7 @@
 ## Packet sniffing and analysis
 After booting up the `listener` VM, we can see an exchange of 4 packets:
 1. DHCP Discover, sent from 0.0.0.0 to 255.255.255.255 (everyone), which is a request for any DHCP servers on `dirtylan` to offer it a network configuration
-2. DHCP Offer, sent from 10.6.66.1, which is `dirtylan`'s DHCP server responding. Within this packet, we can see the offered *client IP address* of **10.6.66.67**, and a *lease time* of 10 minutes. The *lease time* represents when `listener` is meant to ask the DHCP server for permission to continue using the IP address. Note that this can't me enforced by the DHCP server, it is only promising not to offer this IP address to anothre host during this period, unless `listener` releases it first.
+2. DHCP Offer, sent from 10.6.66.1, which is `dirtylan`'s DHCP server responding. Within this packet, we can see the offered *client IP address* of **10.6.66.67**, and a *lease time* of 10 minutes. The *lease time* represents when `listener` is meant to ask the DHCP server for permission to continue using the IP address. Note that this can't me enforced by the DHCP server, it is only promising not to offer this IP address to another host during this period, unless `listener` releases it first.
 3. DHCP Request, sent from 0.0.0.0 advertises that it wants to use the configuration offered.
 4. DHCP Acknowledgment, sent from 10.6.66.1 confirms the request.
 
@@ -11,12 +11,12 @@ After booting up the `listener` VM, we can see an exchange of 4 packets:
 1. An attacker using `kali-vm` could act as an eavesdropper, off-path attacker or man-in-the-middle:
   - *Eavesdropper:* Because promiscuous mode is enabled on `kali-vm`'s `dirtylan` virtual network adapter, they can passively monitor all traffic originating from and destined for hosts on `dirtylan`'s `10.6.66.0/24` subnet (as evidenced by the packet captures that can be performed in Wireshark).
   - *Off-path attacker:* An attacker can also inject new packets into the network.
-  - *MITM:* If an attaacker performs a rogue DHCP server attack, they may be able to manoeuvre themselves into becoming a MITM against selected hosts on the `dirtylan` network.
-2. Two common atatcks are DHCP starvation attacks and the rogue DHCP server attack:
+  - *MITM:* If an attacker performs a rogue DHCP server attack, they may be able to manoeuvre themselves into becoming a MITM against selected hosts on the `dirtylan` network.
+2. Two common attacks are DHCP starvation attacks and the rogue DHCP server attack:
   - *DHCP Starvation Attack:* The attacker floods the DHCP server with DHCP Discover/Request packets in an attempt to exhaust the finite supply of IP addresses that the server is able to assign, potentially spoofing the MAC address in each pair of the Discover/Request packets so the server believes that each request is being made by a different client. If this attack is successful, it leads to a denial of service to genuine hosts on the network attempting to use DHCP to configure their networking stack, and they may be unable to use the network unless they can fall back onto a manually-specified networking configuration.
   - *Rogue DHCP Server Attack:* This attack involves setting up a fake DHCP server and convincing hosts on the network to accept configurations offered by it instead of those offered by the genuine DHCP server. It's usually enough to do this by responding to DHCP Discover requests faster than the genuine server, since most hosts will choose between multiple DHCP offers simply by using the configuration offered by the server that responded first. If this attack is successful, it can potentially lead to a man-in-the-middle attack against the host that accepts the rogue configuration. A DHCP offer usually proposes a default gateway to the client, and if the client uses a default gateway under the control of the attacker, all of the client's communication with hosts outside the local subnet will be forwarded via the attacker.
 
-An attacker could inpersonate the DHCP server, offering a different IP address to `listener`. For example if it gives `listener` its own IP address, whenever `listener` is meant to recieve packets from the router, the router would forward them to `kali-vm` instead. Alternatively, the attacker could give it the same IP that would be offered by the DHCP server with a higher lease time, and then take this IP address over once the lease provided by the DHCP expires for the same effect.
+  An attacker could inpersonate the DHCP server, offering a different IP address to `listener`. For example if it gives `listener` its own IP address, whenever `listener` is meant to recieve packets from the router, the router would forward them to `kali-vm` instead. Alternatively, the attacker could give it the same IP that would be offered by the DHCP server with a higher lease time, and then take this IP address over once the lease provided by the DHCP expires for the same effect.
 
 ## Port scanning and host discovery
 Running a **TCP SYN scan** on `listener` using the IP address sniffed in the previous section, using `nmap -sS 10.6.66.67`. We obtain the following results:
@@ -204,7 +204,16 @@ sudo dnschef --fakedomains mothership.dirty.lan --fakeip 10.6.66.64 --logfile dn
 ```
 Wireshark will also be used to monitor packets sent on the lan.
 
-Looking at these packets, wee can see that 10.6.66.67 (`listener`), is sending DNS requests to 10.6.66.1 for `mothership.dirty.lan`. We essentially need to poison the DNS server entry to point to DNSChef (running on kali). We also need to specify the `--interface` flag to use 10.6.66.64 (our IP), and that `--nameservers` to 10.6.66.1 (the DNS server we are impersonating)
+Looking at these packets, we can see that 10.6.66.67 (`listener`), is sending DNS requests to 10.6.66.1 for `mothership.dirty.lan`. We essentially need to poison the DNS server entry to point to DNSChef (running on kali). We also need to specify the `--interface` flag to use 10.6.66.64 (our IP), and that `--nameservers` to 10.6.66.1 (the DNS server we are impersonating)
 ```
 sudo dnschef --fakedomains mothership.dirty.lan --fakeip 10.6.66.64 --logfile dns.log --interface 10.6.66.64 --nameservers 10.6.66.1
 ```
+Unfortunately, this doesn't seem to work. Some random on EdStem said that `listener` will not accept other DNS servers from DHCP since 10.6.66.1 is hardcoded in it's configuration, but I don't know if that's true or not. They were able to setup a partly working solution with another tool `dnsspoof`:
+```
+sudo dnsspoof -i eth0 -f hosts.txt udp port 53
+```
+Where the `hosts.txt` contains:
+```
+10.6.66.65      mothership.dirty.lan
+```
+However, the issue here was that the reponses were slower than the `dirtylan`'s DHCP server, so their alternative IP address wasn't accepted.
