@@ -15,7 +15,7 @@ After booting up the `listener` VM, we can see an exchange of 4 packets:
 2. Two common attacks are DHCP starvation attacks and the rogue DHCP server attack:
     - *DHCP Starvation Attack:* The attacker floods the DHCP server with DHCP Discover/Request packets in an attempt to exhaust the finite supply of IP addresses that the server is able to assign, potentially spoofing the MAC address in each pair of the Discover/Request packets so the server believes that each request is being made by a different client. If this attack is successful, it leads to a denial of service to genuine hosts on the network attempting to use DHCP to configure their networking stack, and they may be unable to use the network unless they can fall back onto a manually-specified networking configuration.
     - *Rogue DHCP Server Attack:* This attack involves setting up a fake DHCP server and convincing hosts on the network to accept configurations offered by it instead of those offered by the genuine DHCP server. It's usually enough to do this by responding to DHCP Discover requests faster than the genuine server, since most hosts will choose between multiple DHCP offers simply by using the configuration offered by the server that responded first. If this attack is successful, it can potentially lead to a man-in-the-middle attack against the host that accepts the rogue configuration. A DHCP offer usually proposes a default gateway to the client, and if the client uses a default gateway under the control of the attacker, all of the client's communication with hosts outside the local subnet will be forwarded via the attacker.
-   
+
    An attacker could inpersonate the DHCP server, offering a different IP address to `listener`. For example if it gives `listener` its own IP address, whenever `listener` is meant to recieve packets from the router, the router would forward them to `kali-vm` instead. Alternatively, the attacker could give it the same IP that would be offered by the DHCP server with a higher lease time, and then take this IP address over once the lease provided by the DHCP expires for the same effect.
 
 ## Port scanning and host discovery
@@ -130,49 +130,49 @@ As expected, we have detected 3 hosts, 10.6.66.1 (DHCP server), 10.6.66.67 (`lis
    Since we're performing a port scan on a local subnet with no firewall, we don't need to worry about adverse network effects, so we can tell Nmap not to retry in the event that a probe goes unanswered (`--max-retries 1`). To complicate matters further, Nmap rate-limits UDP probes (to avoid flooding the network with huge numbers of packets and making it more likely that remote hosts respond with ICMP Destination unreachable packets when closed ports are scanned), wich causes the scan to take even longer. The low default rate limit can be overridden manually (`--min-rate 10000`) to speed up the UDP scan further, at the possible cost of a less accurate scan.
 
 3. No clue what they're on about, maybe I didn't notice anything odd because I just focused on 1 specific port? Tried to get more details on all the open ports: `nmap -sSV --version-all -p21,22,53,111,13337 10.6.66.67`. This did reveal some strange behaviour. We were able to identify some services:  
-```
-PORT      STATE SERVICE VERSION
-21/tcp    open  ftp     vsftpd 3.0.2
-22/tcp    open  ssh?
-53/tcp    open  domain  dnsmasq 2.72
-111/tcp   open  rpcbind 2-4 (RPC #100000)
-13337/tcp open  http    Apache httpd 2.4.10 ((Debian))
-```
-However, ssh posed an issue, and caused the following to be printed to the terminal:
-```
-SF-Port22-TCP:V=7.92%I=9%D=1/31%Time=61F85E24%P=x86_64-pc-linux-gnu%r(NULL
-SF:,43,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"he
-SF:llo\"\x20server\.\nType\x20your\x20name:\n")%r(GenericLines,58,"This\x2
-SF:0is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20ser
-SF:ver\.\nType\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20\r!\n")%r(G
-SF:etRequest,66,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20
-SF:a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nNice\x20to\x20meet\x
-SF:20you,\x20GET\x20/\x20HTTP/1\.0\r!\n")%r(HTTPOptions,6A,"This\x20is\x20
-SF:not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\n
-SF:Type\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20OPTIONS\x20/\x20HT
-SF:TP/1\.0\r!\n")%r(RTSPRequest,6A,"This\x20is\x20not\x20an\x20SSH\x20serv
-SF:er\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nN
-SF:ice\x20to\x20meet\x20you,\x20OPTIONS\x20/\x20RTSP/1\.0\r!\n")%r(RPCChec
-SF:k,43,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"h
-SF:ello\"\x20server\.\nType\x20your\x20name:\n")%r(DNSVersionBindReqTCP,43
-SF:,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello
-SF:\"\x20server\.\nType\x20your\x20name:\n")%r(DNSStatusRequestTCP,43,"Thi
-SF:s\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x2
-SF:0server\.\nType\x20your\x20name:\n")%r(Hello,5C,"This\x20is\x20not\x20a
-SF:n\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nType\x20
-SF:your\x20name:\nNice\x20to\x20meet\x20you,\x20EHLO\r!\n")%r(Help,5C,"Thi
-SF:s\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x2
-SF:0server\.\nType\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20HELP\r!
-SF:\n")%r(SSLSessionReq,8A,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\
-SF:x20it's\x20a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nNice\x20t
-SF:o\x20meet\x20you,\x20\x16\x03\0\0S\x01\0\0O\x03\0\?G\xd7\xf7\xba,\xee\x
-SF:ea\xb2`~\xf3\0\xfd\x82{\xb9\xd5\x96\xc8w\x9b\xe6\xc4\xdb<=\xdbo\xef\x10
-SF:n\0\0\(\0\x16\0\x13\0!\n")%r(TerminalServerCookie,78,"This\x20is\x20not
-SF:\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nTyp
-SF:e\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20\x03\0\0\*%\xe0\0\0\0
-SF:\0\0Cookie:\x20mstshash=nmap\r!\n");
-```
-While processes listening on TCP port 22 are typically SSH servers, the `?` indicates that Nmap sent commands conforming to a number of different protocols to `listener` on port 22, but the responses did not conform to any protocol known to Nmap, and it was therefore unable to establish what type of service is listening on port 22.
+    ```
+    PORT      STATE SERVICE VERSION
+    21/tcp    open  ftp     vsftpd 3.0.2
+    22/tcp    open  ssh?
+    53/tcp    open  domain  dnsmasq 2.72
+    111/tcp   open  rpcbind 2-4 (RPC #100000)
+    13337/tcp open  http    Apache httpd 2.4.10 ((Debian))
+    ```
+    However, ssh posed an issue, and caused the following to be printed to the terminal:
+    ```
+    SF-Port22-TCP:V=7.92%I=9%D=1/31%Time=61F85E24%P=x86_64-pc-linux-gnu%r(NULL
+    SF:,43,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"he
+    SF:llo\"\x20server\.\nType\x20your\x20name:\n")%r(GenericLines,58,"This\x2
+    SF:0is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20ser
+    SF:ver\.\nType\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20\r!\n")%r(G
+    SF:etRequest,66,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20
+    SF:a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nNice\x20to\x20meet\x
+    SF:20you,\x20GET\x20/\x20HTTP/1\.0\r!\n")%r(HTTPOptions,6A,"This\x20is\x20
+    SF:not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\n
+    SF:Type\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20OPTIONS\x20/\x20HT
+    SF:TP/1\.0\r!\n")%r(RTSPRequest,6A,"This\x20is\x20not\x20an\x20SSH\x20serv
+    SF:er\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nN
+    SF:ice\x20to\x20meet\x20you,\x20OPTIONS\x20/\x20RTSP/1\.0\r!\n")%r(RPCChec
+    SF:k,43,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"h
+    SF:ello\"\x20server\.\nType\x20your\x20name:\n")%r(DNSVersionBindReqTCP,43
+    SF:,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello
+    SF:\"\x20server\.\nType\x20your\x20name:\n")%r(DNSStatusRequestTCP,43,"Thi
+    SF:s\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x2
+    SF:0server\.\nType\x20your\x20name:\n")%r(Hello,5C,"This\x20is\x20not\x20a
+    SF:n\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nType\x20
+    SF:your\x20name:\nNice\x20to\x20meet\x20you,\x20EHLO\r!\n")%r(Help,5C,"Thi
+    SF:s\x20is\x20not\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x2
+    SF:0server\.\nType\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20HELP\r!
+    SF:\n")%r(SSLSessionReq,8A,"This\x20is\x20not\x20an\x20SSH\x20server\x20-\
+    SF:x20it's\x20a\x20\"hello\"\x20server\.\nType\x20your\x20name:\nNice\x20t
+    SF:o\x20meet\x20you,\x20\x16\x03\0\0S\x01\0\0O\x03\0\?G\xd7\xf7\xba,\xee\x
+    SF:ea\xb2`~\xf3\0\xfd\x82{\xb9\xd5\x96\xc8w\x9b\xe6\xc4\xdb<=\xdbo\xef\x10
+    SF:n\0\0\(\0\x16\0\x13\0!\n")%r(TerminalServerCookie,78,"This\x20is\x20not
+    SF:\x20an\x20SSH\x20server\x20-\x20it's\x20a\x20\"hello\"\x20server\.\nTyp
+    SF:e\x20your\x20name:\nNice\x20to\x20meet\x20you,\x20\x03\0\0\*%\xe0\0\0\0
+    SF:\0\0Cookie:\x20mstshash=nmap\r!\n");
+    ```
+    While processes listening on TCP port 22 are typically SSH servers, the `?` indicates that Nmap sent commands conforming to a number of different protocols to `listener` on port 22, but the responses did not conform to any protocol known to Nmap, and it was therefore unable to establish what type of service is listening on port 22.
 4. Althoough the volume of network traffic generated by a port scan of a single host is low in comparison to benign network traffic, it usually has a distincct signature: one host attempting to establish TCP/UDP connections to another host  on a large number of ports (typically in sequential order) in a narrow timeframe. Unless the scan is deliberately made stealthier (e.g. using Nmap's `-T` option), this makes it easier for an IDS to detect a port scan taking place. The traffic that occurs on scanned ports is especially suspicious when version detection is being performed (e.g. Nmap sending SSH, HTTP, RTSP and DNS protocol traffic in the same connection to TCP port 22 when it was trying to identify it in the previous step). The volume of traffic can increase significantly when an entire subnet is being scanned, and this traffic has its own distinct signature (e.g. ARP requests for each IP address in turn in the subnet), which makes subnet-wide scans more noticeable.
 
 ## Communicating with a server using netcat
