@@ -8,7 +8,7 @@ We are exploiting a web application hosted on `dvwa`. As such, we want to gather
 4. The version of PHP being used to execute PHP scripts hosted on the web server
 
 This can be done using `nmap`:
-1. I tried `nmap -sP 10.6.66.1/24`, like in the previous lab to try and find `dvwa`'s IP. However this only revealed 10.6.66.1 (DHCP server) and 10.6.66.64 (`kali_vm` or ourselves). That's cause I didn't launch `dvwa` (I might be slightly retarded). After launching it, I identified its IP as **10.6.66.42**.
+1. I tried `nmap -sP 10.6.66.1/24`, like in the previous lab to try and find `dvwa`'s IP. However this only revealed 10.6.66.1 (DHCP server) and 10.6.66.64 (`kali_vm` or ourselves). That's cause I didn't launch `dvwa` (I might be slightly stupid). After launching it, I identified its IP as **10.6.66.42**.
 2. To identify the OS, I used `nmap -O 10.6.66.42`, which provided the following relevant information:
 ```
 Device type: general purpose
