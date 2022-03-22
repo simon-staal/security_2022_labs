@@ -164,10 +164,10 @@ token
 ```
 We've now found the token `56ce367c12438b50275a38f59ea8f560`.
 
+For good measure, I also updated my account to be a dealer so that I don't need to manually reset my cookie to access the hidden webpage:
+```
 mysql -h "127.0.0.1" -u "csecvm" -p "csecvm" -e "UPDATE csecvm.users SET is_dealer=1 WHERE name='sitra'"
-
-H93AtG6akq
-
+```
 ## Stored XSS
 **Goal"** Find a stored XSS on one of the pages of the website and use it to deliver a payload that will raise an alert ”XSS!” when the vulnerable page is visited. There is no token for this exercise.
 
